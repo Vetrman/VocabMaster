@@ -60,9 +60,9 @@ A vocabulary learning app. Built for myself, might be useful for others.
 3. **Microsoft Translator** - Decent free tier
 
 ### Also need:
-5. **Example sentences API** - Tatoeba or similar for real examples
-6. **Pronunciation API** - Forvo or similar for native pronunciations
-7. **Dictionary API** - For word definitions and usage
+1. **Example sentences API** - Tatoeba or similar for real examples
+2. **Pronunciation API** - Forvo or similar for native pronunciations
+3. **Dictionary API** - For word definitions and usage
 
 ## What needs to be fixed/added?
 
@@ -101,6 +101,10 @@ Create an Issue. Especially if:
 - Words are merged together
 
 Better yet - fix it and submit a PR. Code isn't perfect but it works.
+
+## Security Note
+
+This application is for **educational/personal use only**. While basic security measures are implemented (ASP.NET Core Identity, CSRF protection, parameterized queries), several areas need improvement for production use: file upload validation, input sanitization, and proper HTTPS configuration. Users should not store sensitive information and should deploy with appropriate security measures.
 
 ## License
 
