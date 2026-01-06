@@ -1,0 +1,119 @@
+﻿@model VocabMaster.Models.WordCard
+
+@{
+    ViewData["Title"] = "Create Word Card";
+}
+
+<h1>Create New Word Card</h1>
+
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group mb-3">
+                <label asp-for="OriginalWord" class="control-label"></label>
+                <div class="input-group">
+                    <input asp-for="OriginalWord" class="form-control" id="originalWord" />
+                    <button type="button" class="btn btn-outline-secondary" onclick="translateWord()">
+                        Auto-translate
+                    </button>
+                </div>
+                <span asp-validation-for="OriginalWord" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Translation" class="control-label"></label>
+                <input asp-for="Translation" class="form-control" id="translation" />
+                <span asp-validation-for="Translation" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="ExampleSentence" class="control-label"></label>
+                <textarea asp-for="ExampleSentence" class="form-control" rows="2"></textarea>
+                <span asp-validation-for="ExampleSentence" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="ImageFile" class="control-label"></label>
+                <input asp-for="ImageFile" class="form-control" type="file" accept="image/*" />
+                <span asp-validation-for="ImageFile" class="text-danger"></span>
+                <small class="text-muted">Optional: upload an image for this word</small>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label asp-for="LanguageFrom" class="control-label"></label>
+                        <select asp-for="LanguageFrom" class="form-control" id="fromLang">
+                            <option value="en">English</option>
+                            <option value="ru">Russian</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                        </select>
+                        <span asp-validation-for="LanguageFrom" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label asp-for="LanguageTo" class="control-label"></label>
+                        <select asp-for="LanguageTo" class="form-control" id="toLang">
+                            <option value="ru">Russian</option>
+                            <option value="en">English</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                        </select>
+                        <span asp-validation-for="LanguageTo" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        async function translateWord() {
+            const word = document.getElementById('originalWord').value;
+            const fromLang = document.getElementById('fromLang').value;
+            const toLang = document.getElementById('toLang').value;
+
+            if (!word) {
+                alert('Please enter a word to translate');
+                return;
+            }
+
+            try {
+                const response = await fetch('/WordCards/Translate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: word,
+                        fromLang: fromLang,
+                        toLang: toLang
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.text();
+                    document.getElementById('translation').value = result;
+                } else {
+                    alert('Translation failed. Try manually.');
+                }
+            } catch (error) {
+                console.error('Translation error:', error);
+                alert('Translation error. Check console.');
+            }
+        }
+    </script>
+}

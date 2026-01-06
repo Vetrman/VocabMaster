@@ -1,0 +1,545 @@
+﻿@model IEnumerable<VocabMaster.Models.WordCard>
+
+@{
+    ViewData["Title"] = "My Word Cards";
+}
+
+<h1><i class="fas fa-layer-group me-2"></i>My Word Cards</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-success">
+        <i class="fas fa-plus me-2"></i>Create New Card
+    </a>
+</p>
+
+@if (!Model.Any())
+{
+    <div class="text-center py-5">
+        <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+        <h3 class="text-muted">No word cards yet</h3>
+        <p class="text-muted">Create your first word card!</p>
+        <a asp-action="Create" class="btn btn-primary mt-2">
+            <i class="fas fa-plus me-2"></i>Create First Card
+        </a>
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        @foreach (var item in Model)
+        {
+            <div class="col">
+                <div class="card h-100 shadow-sm" style="border-radius: 15px; overflow: hidden;">
+                    <!-- Картинка карточки -->
+                    @if (!string.IsNullOrEmpty(item.ImagePath))
+                    {
+                        <div style="height: 200px; overflow: hidden; position: relative;">
+                            <img src="@item.ImagePath"
+                                 class="card-img-top"
+                                 alt="@item.OriginalWord"
+                                 style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;"
+                                 onclick="showImageModal('@item.ImagePath', '@item.OriginalWord')"
+                                 title="Click to enlarge" />
+                            <div class="badge bg-dark position-absolute" style="top: 10px; right: 10px; opacity: 0.8;">
+                                @item.LanguageFrom → @item.LanguageTo
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                            <i class="fas fa-image fa-3x text-secondary"></i>
+                            <div class="badge bg-secondary position-absolute" style="top: 10px; right: 10px;">
+                                @item.LanguageFrom → @item.LanguageTo
+                            </div>
+                        </div>
+                    }
+
+                    <div class="card-body">
+                        <!-- Слово и перевод -->
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h5 class="card-title mb-1 translatable-word"
+                                    data-word="@item.OriginalWord"
+                                    data-from="@item.LanguageFrom"
+                                    data-to="@item.LanguageTo"
+                                    style="cursor: help; border-bottom: 1px dashed #007bff;">
+                                    @item.OriginalWord
+                                </h5>
+                                <h6 class="card-subtitle text-muted">@item.Translation</h6>
+                            </div>
+                            <span class="badge bg-info">@item.CreatedDate.ToString("dd.MM.yy")</span>
+                        </div>
+
+                        <!-- Пример предложения -->
+                        @if (!string.IsNullOrEmpty(item.ExampleSentence))
+                        {
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-quote-left me-1"></i>
+                                    @item.ExampleSentence
+                                </small>
+                            </p>
+                        }
+
+                        <!-- Кнопки действий -->
+                        <div class="mt-3 d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    onclick="speakWord('@item.OriginalWord')"
+                                    title="Pronounce">
+                                <i class="fas fa-volume-up"></i>
+                            </button>
+                            <div>
+                                <button class="btn btn-sm btn-outline-info me-2"
+                                        onclick="translateCardWord(this, '@item.OriginalWord', '@item.LanguageFrom', '@item.LanguageTo')"
+                                        title="Translate">
+                                    <i class="fas fa-language"></i>
+                                </button>
+                                <a asp-action="Delete" asp-route-id="@item.Id"
+                                   class="btn btn-sm btn-outline-danger"
+                                   title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- Модальное окно для увеличенной картинки -->
+<div id="imageModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9);">
+    <div style="position: relative; height: 100%; display: flex; align-items: center; justify-content: center;">
+        <span class="close" onclick="closeImageModal()" style="position: absolute; top: 20px; right: 35px; color: white; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 10001;">
+            &times;
+        </span>
+        <img id="modalImage" style="max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 8px;">
+        <div id="imageCaption" style="position: absolute; bottom: 20px; color: white; text-align: center; width: 100%; font-size: 18px;"></div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Перевод при наведении на слова
+        document.querySelectorAll('.translatable-word').forEach(element => {
+            let tooltip = null;
+
+            element.addEventListener('mouseenter', async function () {
+                const word = this.dataset.word;
+                const fromLang = this.dataset.from;
+                const toLang = this.dataset.to;
+
+                // Создаем tooltip
+                tooltip = document.createElement('div');
+                tooltip.className = 'translation-tooltip';
+                tooltip.textContent = 'Translating...';
+                tooltip.style.cssText = `
+                    position: absolute;
+                    background: #333;
+                    color: white;
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    z-index: 1000;
+                    transform: translateX(-50%);
+                    left: 50%;
+                    bottom: 100%;
+                    margin-bottom: 5px;
+                `;
+
+                this.style.position = 'relative';
+                this.appendChild(tooltip);
+
+                try {
+                    const response = await fetch('/WordCards/Translate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            text: word,
+                            fromLang: fromLang,
+                            toLang: toLang
+                        })
+                    });
+
+                    if (response.ok) {
+                        const translation = await response.text();
+                        if (translation === word) {
+                            tooltip.textContent = 'No translation available';
+                        } else {
+                            tooltip.textContent = `Translation: ${translation}`;
+                        }
+                    } else {
+                        tooltip.textContent = 'Translation failed';
+                    }
+                } catch (error) {
+                    tooltip.textContent = 'Error';
+                }
+            });
+
+            element.addEventListener('mouseleave', function () {
+                if (tooltip) {
+                    tooltip.remove();
+                    tooltip = null;
+                }
+            });
+        });
+    });
+
+    // Функции для модального окна
+    function showImageModal(imageSrc, title) {
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        const caption = document.getElementById('imageCaption');
+
+        modal.style.display = "block";
+        modalImg.src = imageSrc;
+        caption.innerHTML = title;
+
+        // Закрытие по ESC
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeImageModal();
+            }
+        });
+    }
+
+    function closeImageModal() {
+        document.getElementById('imageModal').style.display = "none";
+    }
+
+    // Закрытие при клике вне картинки
+    document.getElementById('imageModal').addEventListener('click', function (event) {
+        if (event.target === this) {
+            closeImageModal();
+        }
+    });
+
+    // Произношение слова
+    function speakWord(word) {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(word);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+
+            // Показываем уведомление
+            showToast(`Pronouncing: ${word}`, 'info');
+            window.speechSynthesis.speak(utterance);
+        } else {
+            showToast('Speech synthesis not supported', 'warning');
+        }
+    }
+
+    // Перевод слова в карточке
+    async function translateCardWord(button, word, fromLang, toLang) {
+        const originalHtml = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        button.disabled = true;
+
+        try {
+            const response = await fetch('/WordCards/Translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: word,
+                    fromLang: fromLang,
+                    toLang: toLang
+                })
+            });
+
+            if (response.ok) {
+                const translation = await response.text();
+                if (translation === word || translation === "") {
+                    showToast('Translation service unavailable', 'warning');
+                } else {
+                    showTranslationToast(word, translation, fromLang, toLang);
+                }
+            } else {
+                showToast('Translation failed', 'error');
+            }
+        } catch (error) {
+            console.error('Translation error:', error);
+            showToast('Network error', 'error');
+        } finally {
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+        }
+    }
+
+    // Красивое уведомление
+    function showToast(message, type = 'info') {
+        // Удаляем старые уведомления если их много
+        const oldToasts = document.querySelectorAll('.toast-notification');
+        if (oldToasts.length > 3) {
+            oldToasts[0].remove();
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-content">
+                <i class="fas ${getToastIcon(type)} me-2"></i>
+                ${message}
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        document.body.appendChild(toast);
+
+        // Автоудаление
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(() => {
+                    if (toast.parentElement) toast.remove();
+                }, 300);
+            }
+        }, type === 'error' ? 4000 : 3000);
+    }
+
+    // Красивое уведомление с переводом
+    function showTranslationToast(original, translation, fromLang, toLang) {
+        // Удаляем старые уведомления если их много
+        const oldToasts = document.querySelectorAll('.toast-notification');
+        if (oldToasts.length > 3) {
+            oldToasts[0].remove();
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification toast-translation';
+        toast.innerHTML = `
+            <div class="toast-content">
+                <div class="toast-header">
+                    <i class="fas fa-language me-2"></i>
+                    <strong>Translation</strong>
+                    <span class="toast-lang">${fromLang} → ${toLang}</span>
+                </div>
+                <div class="toast-body">
+                    <div class="toast-original">
+                        <small class="text-muted">Original:</small>
+                        <div class="fw-bold">${original}</div>
+                    </div>
+                    <div class="toast-translated">
+                        <small class="text-muted">Translated:</small>
+                        <div class="fw-bold text-success">${translation}</div>
+                    </div>
+                </div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        document.body.appendChild(toast);
+
+        // Автоудаление через 6 секунд
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(() => {
+                    if (toast.parentElement) toast.remove();
+                }, 300);
+            }
+        }, 6000);
+    }
+
+    function getToastIcon(type) {
+        switch(type) {
+            case 'error': return 'fa-exclamation-circle';
+            case 'warning': return 'fa-exclamation-triangle';
+            case 'info': return 'fa-info-circle';
+            case 'success': return 'fa-check-circle';
+            default: return 'fa-info-circle';
+        }
+    }
+</script>
+
+<style>
+    #imageModal {
+        animation-name: fadeIn;
+        animation-duration: 0.3s;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .card {
+        transition: transform 0.3s, box-shadow 0.3s;
+        border: 1px solid #e0e0e0;
+    }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+
+    .card-img-top {
+        transition: transform 0.5s;
+    }
+
+        .card-img-top:hover {
+            transform: scale(1.05);
+        }
+
+    .badge {
+        font-size: 0.7em;
+        padding: 5px 10px;
+    }
+
+    /* Стили для уведомлений */
+    .toast-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        padding: 15px;
+        max-width: 350px;
+        animation: slideInRight 0.3s ease-out;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-left: 4px solid #007bff;
+    }
+
+    .toast-error {
+        border-left-color: #dc3545;
+        background: #f8d7da;
+    }
+
+    .toast-warning {
+        border-left-color: #ffc107;
+        background: #fff3cd;
+    }
+
+    .toast-translation {
+        border-left-color: #28a745;
+        max-width: 400px;
+    }
+
+    .toast-content {
+        flex: 1;
+    }
+
+    .toast-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        color: #495057;
+    }
+
+    .toast-lang {
+        margin-left: auto;
+        font-size: 0.8em;
+        background: #e9ecef;
+        padding: 2px 8px;
+        border-radius: 12px;
+    }
+
+    .toast-body {
+        font-size: 0.95em;
+    }
+
+    .toast-original, .toast-translated {
+        margin-bottom: 5px;
+    }
+
+        .toast-original .fw-bold {
+            color: #495057;
+        }
+
+        .toast-translated .fw-bold {
+            color: #28a745;
+        }
+
+    .toast-close {
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        padding: 5px;
+        margin-left: 10px;
+        font-size: 1.1em;
+        transition: color 0.2s;
+    }
+
+        .toast-close:hover {
+            color: #343a40;
+        }
+
+    @@keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @@keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+
+    /* Таймер для уведомлений */
+    .toast-notification:before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: #007bff;
+        animation: toastTimer 6s linear;
+        border-radius: 0 0 10px 10px;
+    }
+
+    .toast-error:before {
+        background: #dc3545;
+        animation: toastTimer 4s linear;
+    }
+
+    .toast-warning:before {
+        background: #ffc107;
+        animation: toastTimer 4s linear;
+    }
+
+    .toast-translation:before {
+        background: #28a745;
+        animation: toastTimer 6s linear;
+    }
+
+    @@keyframes toastTimer {
+        from {
+            width: 100%;
+        }
+
+        to {
+            width: 0%;
+        }
+    }
+</style>

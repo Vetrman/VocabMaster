@@ -1,0 +1,55 @@
+﻿# User-specific files
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+bin/
+obj/
+
+# Visual Studio files
+.vs/
+.vscode/
+.idea/
+
+# SQL Server files
+*.mdf
+*.ldf
+*.ndf
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+# Others
+ClientBin/
+~$*
+*~
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+
+# Custom for VocabMaster
+wwwroot/uploads/
+appsettings.Development.json
+appsettings.json
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
