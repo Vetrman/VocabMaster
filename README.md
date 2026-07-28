@@ -82,7 +82,6 @@ A vocabulary learning app. Built for myself, might be useful for others.
 9. Group cards by topics
 10. Vocabulary tests/quizzes
 11. Multi-device sync
-12. Dark mode
 
 ## How to run?
 
